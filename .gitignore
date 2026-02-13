@@ -1,0 +1,27 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# User data (auto-generated)
+nova_commands.json
+nova_settings.json
+tempCodeRunnerFile.py

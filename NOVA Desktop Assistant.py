@@ -25,8 +25,28 @@ except ImportError:
     win32gui = None
     win32con = None
 
-CONFIG_FILE = "nova_commands.json"
-SETTINGS_FILE = "nova_settings.json"
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller EXE."""
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+
+
+def user_data_path(filename):
+    """Get path for writable user data files (config, settings).
+    Stored in %APPDATA%/NOVA/ so they persist across EXE updates."""
+    appdata = os.environ.get("APPDATA", os.path.expanduser("~"))
+    nova_dir = os.path.join(appdata, "NOVA")
+    os.makedirs(nova_dir, exist_ok=True)
+    return os.path.join(nova_dir, filename)
+
+
+CONFIG_FILE = user_data_path("nova_commands.json")
+SETTINGS_FILE = user_data_path("nova_settings.json")
+ICON_PATH = resource_path("nova.ico")
 
 # ──────────────────────────────────────────────
 #  REFINED DESIGN SYSTEM
@@ -83,6 +103,11 @@ class NovaAssistant(ctk.CTk):
         self.minsize(880, 600)
         self.configure(fg_color=COLORS["bg"])
         ctk.set_appearance_mode("Dark")
+
+        # ── Set window icon ──
+        if os.path.exists(ICON_PATH):
+            self.iconbitmap(ICON_PATH)
+            self.after(200, lambda: self.iconbitmap(ICON_PATH))
 
         # ── State Variables ──
         self.is_running = False
@@ -355,16 +380,33 @@ class NovaAssistant(ctk.CTk):
             text_color=COLORS["text"]
         ).pack(side="left", pady=SPACING["lg"])
 
+        # Button container (right side)
+        btn_container = ctk.CTkFrame(header_content, fg_color="transparent")
+        btn_container.pack(side="right", pady=SPACING["md"])
+
+        # Commands Guide button
+        ctk.CTkButton(
+            btn_container, text="\U0001F4D6 Guide",
+            font=ctk.CTkFont(family=FONT, size=13, weight="bold"),
+            width=90, height=38, corner_radius=10,
+            fg_color=COLORS["surface3"],
+            hover_color=COLORS["warn"],
+            text_color=COLORS["text_dim"],
+            border_width=1,
+            border_color=COLORS["border"],
+            command=lambda: self._open_commands_guide(win)
+        ).pack(side="left", padx=(0, SPACING["sm"]))
+
         # Add button with icon
         ctk.CTkButton(
-            header_content, text="+ Add New",
+            btn_container, text="+ Add New",
             font=ctk.CTkFont(family=FONT, size=13, weight="bold"),
             width=110, height=38, corner_radius=10,
             fg_color=COLORS["accent"],
             hover_color=COLORS["accent_hover"],
             text_color="#FFFFFF",
             command=lambda: self.open_add_edit_dialog(None, None, win)
-        ).pack(side="right", pady=SPACING["md"])
+        ).pack(side="left")
 
         # ── Commands List ──
         list_frame = ctk.CTkFrame(win, fg_color="transparent")
@@ -420,6 +462,148 @@ class NovaAssistant(ctk.CTk):
             font=ctk.CTkFont(family=FONT, size=11),
             text_color=COLORS["text_muted"], anchor="w"
         ).pack(anchor="w")
+
+    def _open_commands_guide(self, parent_window):
+        """Open a beautiful Commands Guide dialog showing all available voice commands."""
+        guide = ctk.CTkToplevel(self)
+        guide.title("Commands Guide")
+        guide.geometry("520x580")
+        guide.configure(fg_color=COLORS["bg"])
+        guide.transient(parent_window)
+        guide.grab_set()
+        guide.resizable(False, False)
+
+        # Center on parent
+        x = parent_window.winfo_x() + (parent_window.winfo_width() // 2) - 260
+        y = parent_window.winfo_y() + (parent_window.winfo_height() // 2) - 290
+        guide.geometry(f"+{x}+{y}")
+
+        # Header
+        header = ctk.CTkFrame(guide, fg_color=COLORS["surface"], corner_radius=0, height=60)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
+        ctk.CTkLabel(
+            header, text="\U0001F4D6  Voice Commands Guide",
+            font=ctk.CTkFont(family=FONT, size=17, weight="bold"),
+            text_color=COLORS["text"]
+        ).pack(side="left", padx=SPACING["lg"], pady=SPACING["lg"])
+
+        ctk.CTkButton(
+            header, text="✕", width=36, height=36, corner_radius=8,
+            font=ctk.CTkFont(size=16),
+            fg_color="transparent",
+            hover_color=COLORS["danger"],
+            text_color=COLORS["text_dim"],
+            command=guide.destroy
+        ).pack(side="right", padx=SPACING["lg"])
+
+        # Scrollable content
+        content = ctk.CTkScrollableFrame(
+            guide, fg_color="transparent",
+            scrollbar_button_color=COLORS["border"],
+            scrollbar_button_hover_color=COLORS["accent"]
+        )
+        content.pack(fill="both", expand=True, padx=SPACING["lg"], pady=SPACING["md"])
+
+        # Command categories with their commands
+        categories = [
+            {
+                "title": "\U0001F3A4  Wake Word",
+                "color": COLORS["accent_glow"],
+                "commands": [
+                    ("\"Nova\"", "Wake up the assistant. It will respond with \"Yes boss!\" and start listening for your command."),
+                    ("Tip", "You can say it naturally \u2014 Nova, Noah, Nora \u2014 the assistant understands variations!"),
+                ]
+            },
+            {
+                "title": "\U0001F4C2  Open Applications",
+                "color": COLORS["success_glow"],
+                "commands": [
+                    ("\"Open Chrome\"", "Opens Google Chrome. If already open, switches to it."),
+                    ("\"Open Spotify\"", "Opens Spotify. If already open, switches to it."),
+                    ("\"Open [app name]\"", "Works with any installed app \u2014 VS Code, Notepad, Discord, etc."),
+                ]
+            },
+            {
+                "title": "\U0001F4BE  Drive Folders",
+                "color": COLORS["warn"],
+                "commands": [
+                    ("\"Open M drive\"", "Opens the M:\\ drive root in File Explorer."),
+                    ("\"Open [folder] from M drive\"", "Opens a specific folder from M:\\ drive."),
+                    ("\"Open [folder] from C drive\"", "Works with any drive letter \u2014 C, D, E, M, etc."),
+                    ("Example", "\"Open Internship from M drive\" \u2192 opens M:\\Internship"),
+                ]
+            },
+            {
+                "title": "\u274C  Close Applications",
+                "color": COLORS["danger"],
+                "commands": [
+                    ("\"Close Chrome\"", "Closes Google Chrome."),
+                    ("\"Close Spotify\"", "Closes Spotify."),
+                    ("\"Close [app name]\"", "Works with Chrome, Spotify, Discord, VS Code, and more."),
+                ]
+            },
+            {
+                "title": "\U0001F4BB  Terminal",
+                "color": COLORS["text_dim"],
+                "commands": [
+                    ("\"Open Terminal\"", "Opens Command Prompt. Switches to it if already open."),
+                    ("\"Open Command Prompt\"", "Same as above."),
+                ]
+            },
+        ]
+
+        for cat in categories:
+            # Category card
+            card = ctk.CTkFrame(
+                content, fg_color=COLORS["surface"],
+                corner_radius=12, border_width=1, border_color=COLORS["border"]
+            )
+            card.pack(fill="x", pady=SPACING["xs"], padx=SPACING["xs"])
+
+            # Category header
+            cat_header = ctk.CTkFrame(card, fg_color="transparent")
+            cat_header.pack(fill="x", padx=SPACING["md"], pady=(SPACING["md"], SPACING["xs"]))
+
+            ctk.CTkLabel(
+                cat_header, text=cat["title"],
+                font=ctk.CTkFont(family=FONT, size=14, weight="bold"),
+                text_color=cat["color"]
+            ).pack(anchor="w")
+
+            # Commands
+            for trigger, desc in cat["commands"]:
+                cmd_frame = ctk.CTkFrame(card, fg_color="transparent")
+                cmd_frame.pack(fill="x", padx=SPACING["lg"], pady=2)
+
+                ctk.CTkLabel(
+                    cmd_frame, text=trigger,
+                    font=ctk.CTkFont(family=FONT, size=12, weight="bold"),
+                    text_color=COLORS["text"], anchor="w", wraplength=460
+                ).pack(anchor="w")
+
+                ctk.CTkLabel(
+                    cmd_frame, text=desc,
+                    font=ctk.CTkFont(family=FONT, size=11),
+                    text_color=COLORS["text_dim"], anchor="w", wraplength=440
+                ).pack(anchor="w", padx=(SPACING["sm"], 0))
+
+            # Bottom padding for card
+            ctk.CTkFrame(card, fg_color="transparent", height=SPACING["sm"]).pack()
+
+        # Footer tip
+        tip_frame = ctk.CTkFrame(
+            guide, fg_color=COLORS["surface2"], corner_radius=12, height=50
+        )
+        tip_frame.pack(fill="x", padx=SPACING["lg"], pady=(0, SPACING["lg"]))
+        tip_frame.pack_propagate(False)
+
+        ctk.CTkLabel(
+            tip_frame, text="\U0001F4A1 Tip: You can also add custom commands using the '+ Add New' button!",
+            font=ctk.CTkFont(family=FONT, size=12),
+            text_color=COLORS["text_dim"]
+        ).pack(expand=True)
 
     def refresh_functions_list(self, scroll_frame, parent_window):
         """Enhanced command list with better cards"""
@@ -620,11 +804,20 @@ class NovaAssistant(ctk.CTk):
     # ═══════════════════════════════════════════
     def load_custom_commands(self):
         if not os.path.exists(CONFIG_FILE):
-            for legacy in ("stark_commands.json", "anna_commands.json"):
+            # Try migrating from old locations
+            old_locations = [
+                os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "nova_commands.json"),
+                "nova_commands.json",
+                "stark_commands.json",
+                "anna_commands.json",
+            ]
+            for legacy in old_locations:
                 if os.path.exists(legacy):
                     try:
                         with open(legacy, "r") as f:
                             self.custom_commands = json.load(f)
+                        # Save to new location
+                        self.save_custom_commands()
                         break
                     except:
                         pass
@@ -891,7 +1084,27 @@ class NovaAssistant(ctk.CTk):
         return engine
 
     def speak(self, text):
+        """Blocking speech — waits until TTS finishes."""
         self.status_log.configure(text=f"Nova: {text}")
+        try:
+            if pythoncom:
+                pythoncom.CoInitialize()
+            engine = self.init_engine()
+            engine.say(text)
+            engine.runAndWait()
+            if pythoncom:
+                pythoncom.CoUninitialize()
+        except:
+            pass
+
+    def speak_async(self, text):
+        """Non-blocking speech — speaks in a background thread so
+        the main listening loop can continue immediately."""
+        self.status_log.configure(text=f"Nova: {text}")
+        threading.Thread(target=self._speak_worker, args=(text,), daemon=True).start()
+
+    def _speak_worker(self, text):
+        """Background TTS worker thread."""
         try:
             if pythoncom:
                 pythoncom.CoInitialize()
@@ -907,26 +1120,77 @@ class NovaAssistant(ctk.CTk):
     #  COMMAND PROCESSING
     # ═══════════════════════════════════════════
     def close_application(self, app_name):
+        """Close an application by name using taskkill with comprehensive process mapping."""
         self.speak(f"Closing {app_name}")
+
+        # Comprehensive mapping of app names to their process names
+        process_map = {
+            "chrome":       ["chrome.exe"],
+            "google chrome": ["chrome.exe"],
+            "firefox":      ["firefox.exe"],
+            "edge":         ["msedge.exe"],
+            "microsoft edge": ["msedge.exe"],
+            "notepad":      ["notepad.exe"],
+            "calculator":   ["CalculatorApp.exe", "Calculator.exe"],
+            "calc":         ["CalculatorApp.exe", "Calculator.exe"],
+            "spotify":      ["Spotify.exe"],
+            "discord":      ["Discord.exe"],
+            "telegram":     ["Telegram.exe"],
+            "whatsapp":     ["WhatsApp.exe"],
+            "vs code":      ["Code.exe"],
+            "visual studio code": ["Code.exe"],
+            "code":         ["Code.exe"],
+            "word":         ["WINWORD.EXE"],
+            "excel":        ["EXCEL.EXE"],
+            "powerpoint":   ["POWERPNT.EXE"],
+            "file explorer": ["explorer.exe"],
+            "explorer":     ["explorer.exe"],
+            "vlc":          ["vlc.exe"],
+            "obs":          ["obs64.exe", "obs32.exe"],
+            "teams":        ["ms-teams.exe", "Teams.exe"],
+            "zoom":         ["Zoom.exe"],
+            "slack":        ["slack.exe"],
+            "skype":        ["Skype.exe"],
+        }
+
+        app_lower = app_name.lower().strip()
+        killed = False
+
+        # Try the process map first
+        for key, proc_names in process_map.items():
+            if key in app_lower or app_lower in key:
+                for proc in proc_names:
+                    try:
+                        subprocess.run(
+                            f"taskkill /F /IM {proc}",
+                            shell=True, capture_output=True
+                        )
+                        killed = True
+                    except:
+                        pass
+                if killed:
+                    return
+
+        # Fallback: try PowerShell to find process by partial name match
         try:
-            proc = app_name
-            if "chrome" in app_name:
-                proc = "chrome"
-            elif "edge" in app_name:
-                proc = "msedge"
-            elif "calc" in app_name:
-                proc = "calculator"
-            elif "notepad" in app_name:
-                proc = "notepad"
-            elif "code" in app_name:
-                proc = "code"
+            # Clean the name for process search
+            search_name = re.sub(r'[^a-zA-Z0-9]', '', app_lower)
+            ps_cmd = f'Get-Process | Where-Object {{$_.ProcessName -like "*{search_name}*"}} | Stop-Process -Force'
+            subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
+                capture_output=True, timeout=5
+            )
+        except:
+            pass
+
+        # Last resort: try direct taskkill with the name as-is
+        try:
+            proc = app_lower
             if not proc.endswith(".exe"):
                 proc += ".exe"
-            subprocess.Popen(
+            subprocess.run(
                 f"taskkill /F /IM {proc}",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                shell=True, capture_output=True
             )
         except:
             pass
@@ -1075,7 +1339,8 @@ class NovaAssistant(ctk.CTk):
 
                         # Wake word detection (direct + fuzzy matching)
                         if self._is_wake_word(word):
-                            self.speak("Yes boss!")
+                            # Say "Yes boss!" WITHOUT blocking — start listening immediately
+                            self.speak_async("Yes boss!")
                             self.subtitle_label.configure(
                                 text="Processing command...",
                                 text_color=COLORS["warn"]
@@ -1086,6 +1351,7 @@ class NovaAssistant(ctk.CTk):
                             )
 
                             # Listen for the actual command on the SAME mic
+                            # This starts IMMEDIATELY while "Yes boss!" is still playing
                             try:
                                 a2 = self.recognizer.listen(
                                     source, timeout=5, phrase_time_limit=8
