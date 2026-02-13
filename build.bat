@@ -2,7 +2,7 @@
 title NOVA - Build Script
 echo.
 echo  ============================================
-echo     N O V A  -  Desktop Assistant Builder
+echo     NOVA  -  Desktop Assistant Builder
 echo  ============================================
 echo.
 

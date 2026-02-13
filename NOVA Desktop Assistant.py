@@ -93,7 +93,7 @@ class NovaAssistant(ctk.CTk):
         super().__init__()
 
 
-        self.title("N O V A")
+        self.title("NOVA")
         self.geometry("1000x680")
         self.minsize(880, 600)
         self.configure(fg_color=COLORS["bg"])
@@ -157,7 +157,7 @@ class NovaAssistant(ctk.CTk):
         ).pack(side="left", padx=(0, SPACING["sm"]))
 
         ctk.CTkLabel(
-            logo_frame, text="N O V A",
+            logo_frame, text="NOVA",
             font=ctk.CTkFont(family=FONT, size=15, weight="bold"),
             text_color=COLORS["text"]
         ).pack(side="left")
@@ -192,14 +192,14 @@ class NovaAssistant(ctk.CTk):
 
 
         ctk.CTkLabel(
-            content, text="N · O · V · A",
+            content, text="NOVA",
             font=ctk.CTkFont(family=FONT, size=56, weight="bold"),
             text_color=COLORS["text"]
         ).grid(row=1, column=0, pady=(0, SPACING["xs"]))
 
 
         self.subtitle_label = ctk.CTkLabel(
-            content, text="Neural Omni-capable Voice Assistant",
+            content, text="Desktop Voice Assistant",
             font=ctk.CTkFont(family=FONT, size=14),
             text_color=COLORS["text_dim"]
         )
@@ -1033,7 +1033,7 @@ class NovaAssistant(ctk.CTk):
             hover_color=COLORS["accent_hover"]
         )
         self.subtitle_label.configure(
-            text="Neural Omni-capable Voice Assistant",
+            text="Desktop Voice Assistant",
             text_color=COLORS["text_dim"]
         )
         self.status_badge.configure(

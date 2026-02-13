@@ -4,8 +4,8 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
 
-<h1 align="center">N · O · V · A</h1>
-<p align="center"><strong>Neural Omni-capable Voice Assistant</strong></p>
+<h1 align="center">NOVA</h1>
+<p align="center"><strong>Desktop Voice Assistant</strong></p>
 
 <p align="center">
 A hands-free voice-controlled desktop assistant for Windows that lets you open apps, navigate folders, close programs, and execute custom commands — all using your voice.
