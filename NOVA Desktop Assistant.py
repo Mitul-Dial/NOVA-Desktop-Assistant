@@ -8,12 +8,22 @@ import sys
 import subprocess
 import json
 import math
+import re
+import difflib
 
 # Try to import pythoncom ensuring it works in threads on Windows
 try:
     import pythoncom
 except ImportError:
     pythoncom = None
+
+# Try to import win32gui for window switching
+try:
+    import win32gui
+    import win32con
+except ImportError:
+    win32gui = None
+    win32con = None
 
 CONFIG_FILE = "nova_commands.json"
 SETTINGS_FILE = "nova_settings.json"
@@ -55,6 +65,15 @@ SPACING = {
 
 
 class NovaAssistant(ctk.CTk):
+    # ── Comprehensive wake-word triggers ──
+    WAKE_TRIGGERS = [
+        "nova", "noah", "nora", "novah", "nover", "novar",
+        "know va", "now a", "no va", "now va", "nor va",
+        "nova.", "no ah", "nova!", "noaa", "over",
+        "novaa", "novas", "novo", "nava", "neva",
+        "norva", "nova's", "knova", "gnova",
+    ]
+
     def __init__(self):
         super().__init__()
 
@@ -74,6 +93,14 @@ class NovaAssistant(ctk.CTk):
         self._pulse_after_id = None
         self._glow_after_id = None
         self._pulse_angle = 0
+
+        # ── Tune recognizer for better sensitivity ──
+        self.recognizer.energy_threshold = 250
+        self.recognizer.dynamic_energy_threshold = True
+        self.recognizer.dynamic_energy_adjustment_damping = 0.15
+        self.recognizer.dynamic_energy_ratio = 1.1
+        self.recognizer.pause_threshold = 0.5
+        self.recognizer.non_speaking_duration = 0.4
 
         # ── Initialize ──
         self.load_custom_commands()
@@ -645,6 +672,123 @@ class NovaAssistant(ctk.CTk):
         except:
             pass
 
+    # ═══════════════════════════════════════════
+    #  DYNAMIC DRIVE FOLDER ACCESS
+    # ═══════════════════════════════════════════
+    def _find_folder_on_drive(self, folder_name, drive_letter):
+        """Find a folder on any drive by name using fuzzy matching.
+        Works with any drive letter (M, C, E, D, etc.)."""
+        drive_root = f"{drive_letter.upper()}:\\"
+        if not os.path.exists(drive_root):
+            return None
+        try:
+            # Gather all top-level folders on this drive
+            folders = {}
+            for entry in os.scandir(drive_root):
+                if entry.is_dir():
+                    folders[entry.name.lower()] = entry.path
+
+            name = folder_name.lower().strip()
+
+            # Exact match
+            if name in folders:
+                return folders[name]
+
+            # Fuzzy match
+            matches = difflib.get_close_matches(name, folders.keys(), n=1, cutoff=0.5)
+            if matches:
+                return folders[matches[0]]
+
+            # Substring match
+            for fname, fpath in folders.items():
+                if name in fname or fname in name:
+                    return fpath
+        except Exception:
+            pass
+        return None
+
+    def _parse_drive_command(self, command):
+        """Parse commands like 'open internship from m drive' or 'open photos from e drive'.
+        Returns (folder_name, drive_letter) or (None, None)."""
+        # Pattern: "open <folder> from <letter> drive"
+        pattern = r'^open\s+(.+?)\s+from\s+([a-z])\s*drive$'
+        match = re.match(pattern, command.lower().strip())
+        if match:
+            return match.group(1).strip(), match.group(2).strip()
+        return None, None
+
+    # ═══════════════════════════════════════════
+    #  WINDOW SWITCHING (focus existing windows)
+    # ═══════════════════════════════════════════
+    def _get_window_keywords(self, app_name):
+        """Return a list of window-title keywords to search for a given app."""
+        app_lower = app_name.lower()
+        keyword_map = {
+            "chrome":        ["google chrome", "chrome"],
+            "google chrome":  ["google chrome", "chrome"],
+            "firefox":       ["mozilla firefox", "firefox"],
+            "edge":          ["microsoft edge", "edge"],
+            "microsoft edge": ["microsoft edge", "edge"],
+            "file explorer":  ["file explorer", "explorer"],
+            "explorer":      ["file explorer", "explorer"],
+            "notepad":       ["notepad"],
+            "vs code":       ["visual studio code"],
+            "visual studio code": ["visual studio code"],
+            "code":          ["visual studio code"],
+            "word":          ["word"],
+            "excel":         ["excel"],
+            "powerpoint":    ["powerpoint"],
+            "spotify":       ["spotify"],
+            "discord":       ["discord"],
+            "telegram":      ["telegram"],
+            "whatsapp":      ["whatsapp"],
+            "calculator":    ["calculator"],
+            "cmd":           ["command prompt", "cmd.exe"],
+            "command prompt": ["command prompt", "cmd.exe"],
+            "terminal":      ["terminal", "windows terminal", "command prompt"],
+        }
+        return keyword_map.get(app_lower, [app_lower])
+
+    def _switch_to_window(self, app_name):
+        """Try to bring an already-open window of the app to the foreground.
+        Returns True if a window was found and activated, False otherwise."""
+        if not win32gui or not win32con:
+            return False
+
+        keywords = self._get_window_keywords(app_name)
+        found_hwnd = None
+
+        def enum_handler(hwnd, _):
+            nonlocal found_hwnd
+            if found_hwnd:
+                return
+            if not win32gui.IsWindowVisible(hwnd):
+                return
+            title = win32gui.GetWindowText(hwnd).lower()
+            if not title:
+                return
+            for kw in keywords:
+                if kw in title:
+                    found_hwnd = hwnd
+                    return
+
+        try:
+            win32gui.EnumWindows(enum_handler, None)
+        except Exception:
+            pass
+
+        if found_hwnd:
+            try:
+                # Restore if minimized
+                if win32gui.IsIconic(found_hwnd):
+                    win32gui.ShowWindow(found_hwnd, win32con.SW_RESTORE)
+                # Bring to foreground
+                win32gui.SetForegroundWindow(found_hwnd)
+                return True
+            except Exception:
+                return False
+        return False
+
     def load_settings(self):
         self.stay_active = False
         if os.path.exists(SETTINGS_FILE):
@@ -808,9 +952,45 @@ class NovaAssistant(ctk.CTk):
                         subprocess.Popen(["explorer", link], shell=True)
                 return
 
-        # System applications
+        # --------------------------------------------------
+        # Drive folder commands (HIGHEST PRIORITY for "from X drive")
+        # e.g. "open internship from m drive"
+        # e.g. "open photos from e drive"
+        # Works with ANY drive letter — not hardcoded!
+        # --------------------------------------------------
+        folder_name, drive_letter = self._parse_drive_command(command)
+        if folder_name and drive_letter:
+            folder_path = self._find_folder_on_drive(folder_name, drive_letter)
+            if folder_path:
+                folder_display = os.path.basename(folder_path)
+                self.speak(f"Opening {folder_display} from {drive_letter.upper()} drive")
+                subprocess.Popen(["explorer", folder_path])
+            else:
+                self.speak(f"Could not find {folder_name} on {drive_letter.upper()} drive")
+            return
+
+        # Special: "open [letter] drive" → open drive root
+        drive_root_match = re.match(r'^open\s+([a-z])\s*drive$', command.strip())
+        if drive_root_match:
+            dl = drive_root_match.group(1).upper()
+            drive_path = f"{dl}:\\"
+            if os.path.exists(drive_path):
+                self.speak(f"Opening {dl} drive")
+                subprocess.Popen(["explorer", drive_path])
+            else:
+                self.speak(f"{dl} drive not found")
+            return
+
+        # ── Open commands (apps / window switching) ──
         if command.startswith("open "):
             target = command.replace("open ", "").strip()
+
+            # Try to switch to an already-open window first
+            if self._switch_to_window(target):
+                self.speak(f"Switching to {target}")
+                return
+
+            # System applications — launch new if not already open
             launch_path = self.apps.get(target)
             if not launch_path:
                 matches = sorted([k for k in self.apps if target in k], key=len)
@@ -830,54 +1010,86 @@ class NovaAssistant(ctk.CTk):
 
         # Command prompt
         if "command prompt" in command or "terminal" in command:
-            self.speak("Opening Terminal")
-            os.system("start cmd")
+            # Try switching to existing terminal first
+            if self._switch_to_window("terminal"):
+                self.speak("Switching to Terminal")
+            else:
+                self.speak("Opening Terminal")
+                os.system("start cmd")
 
     # ═══════════════════════════════════════════
     #  LISTENING LOOP
     # ═══════════════════════════════════════════
+    def _is_wake_word(self, heard_text):
+        """Check if heard text contains the wake word 'Nova' using both
+        direct matching and fuzzy matching for mispronunciations."""
+        heard = heard_text.lower().strip()
+
+        # 1. Direct substring matching against all triggers
+        for trigger in self.WAKE_TRIGGERS:
+            if trigger in heard:
+                return True
+
+        # 2. Fuzzy match each spoken word against 'nova'
+        words = heard.split()
+        for w in words:
+            # Strip punctuation
+            w_clean = re.sub(r'[^a-z]', '', w)
+            if not w_clean:
+                continue
+            ratio = difflib.SequenceMatcher(None, w_clean, "nova").ratio()
+            if ratio >= 0.6:  # 60% similarity threshold
+                return True
+
+        return False
+
     def run_loop(self):
         if pythoncom:
             pythoncom.CoInitialize()
 
-        while self.is_running:
-            try:
-                with sr.Microphone() as source:
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+        try:
+            # Open microphone ONCE and keep it open for the entire session
+            with sr.Microphone() as source:
+                # Calibrate ambient noise ONCE at the start
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.8)
+                print(f"[Nova] Calibrated. Energy threshold: {self.recognizer.energy_threshold}")
+
+                while self.is_running:
                     try:
-                        audio = self.recognizer.listen(source, timeout=1, phrase_time_limit=5)
-                    except sr.WaitTimeoutError:
-                        continue
+                        # Listen for wake word — short phrase, generous timeout
+                        try:
+                            audio = self.recognizer.listen(
+                                source, timeout=3, phrase_time_limit=3
+                            )
+                        except sr.WaitTimeoutError:
+                            continue
 
-                    if not self.is_running:
-                        break
+                        if not self.is_running:
+                            break
 
-                    try:
-                        word = self.recognizer.recognize_google(audio).lower()
-                        print(f"Heard: {word}")
-                    except:
-                        continue
+                        try:
+                            word = self.recognizer.recognize_google(audio).lower()
+                            print(f"Heard: {word}")
+                        except (sr.UnknownValueError, sr.RequestError):
+                            continue
 
-                    # Wake word triggers
-                    triggers = [
-                        "nova", "noah", "nora", "novah", "nover",
-                        "know va", "now a", "no va"
-                    ]
-                    if any(t in word for t in triggers):
-                        self.speak("Yes?")
-                        self.subtitle_label.configure(
-                            text="Processing command...",
-                            text_color=COLORS["warn"]
-                        )
-                        self.status_badge.configure(
-                            text="Processing",
-                            text_color=COLORS["warn"]
-                        )
+                        # Wake word detection (direct + fuzzy matching)
+                        if self._is_wake_word(word):
+                            self.speak("Yes boss!")
+                            self.subtitle_label.configure(
+                                text="Processing command...",
+                                text_color=COLORS["warn"]
+                            )
+                            self.status_badge.configure(
+                                text="Processing",
+                                text_color=COLORS["warn"]
+                            )
 
-                        with sr.Microphone() as src2:
-                            self.recognizer.adjust_for_ambient_noise(src2, duration=0.5)
+                            # Listen for the actual command on the SAME mic
                             try:
-                                a2 = self.recognizer.listen(src2, timeout=5, phrase_time_limit=5)
+                                a2 = self.recognizer.listen(
+                                    source, timeout=5, phrase_time_limit=8
+                                )
                                 cmd = self.recognizer.recognize_google(a2)
                                 self.status_log.configure(text=f"Command: {cmd}")
                                 self.process_command(cmd)
@@ -886,18 +1098,21 @@ class NovaAssistant(ctk.CTk):
                             except sr.UnknownValueError:
                                 self.speak("Could not understand.")
 
-                        # Reset to listening state
-                        self.subtitle_label.configure(
-                            text='Listening for "Nova" command',
-                            text_color=COLORS["success_glow"]
-                        )
-                        self.status_badge.configure(
-                            text="Online",
-                            text_color=COLORS["success"]
-                        )
+                            # Reset to listening state
+                            self.subtitle_label.configure(
+                                text='Listening for "Nova" command',
+                                text_color=COLORS["success_glow"]
+                            )
+                            self.status_badge.configure(
+                                text="Online",
+                                text_color=COLORS["success"]
+                            )
 
-            except Exception as e:
-                print(f"Error: {e}")
+                    except Exception as e:
+                        print(f"Error in loop: {e}")
+
+        except Exception as e:
+            print(f"Microphone error: {e}")
 
         if pythoncom:
             pythoncom.CoUninitialize()
