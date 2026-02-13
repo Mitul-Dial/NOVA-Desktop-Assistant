@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Platform-Windows_10%2F11-0078D6?style=for-the-badge&logo=windows&logoColor=white" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
-</p>
+
 
 <h1 align="center">NOVA</h1>
 <p align="center"><strong>Desktop Voice Assistant</strong></p>
@@ -56,10 +52,8 @@ Think of it like having your own personal Jarvis — say *"Nova"* to wake it up,
 
 Before you start, make sure you have:
 
-1. **Windows 10 or 11**
-2. **Python 3.10 or newer** — [Download from python.org](https://www.python.org/downloads/)
-   > ⚠️ During Python installation, **check the box** that says **"Add Python to PATH"** — this is important!
-3. **A working microphone** — Built-in laptop mic, headset, or external mic
+1. **Python 3.10 or newer**
+2. **A working microphone** — Built-in laptop mic, headset, or external mic
 4. **Internet connection** — Required for voice recognition (uses Google Speech-to-Text)
 
 ---
@@ -230,6 +224,8 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 ---
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/Mitul-Dial">Mitul Dial</a>
-</p>
+## Author
+
+**Developed by Mitul Dial**  
+GitHub: [https://github.com/Mitul-Dial](https://github.com/Mitul-Dial)
+
