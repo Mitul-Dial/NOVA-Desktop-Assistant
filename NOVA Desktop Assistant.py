@@ -11,13 +11,11 @@ import math
 import re
 import difflib
 
-# Try to import pythoncom ensuring it works in threads on Windows
 try:
     import pythoncom
 except ImportError:
     pythoncom = None
 
-# Try to import win32gui for window switching
 try:
     import win32gui
     import win32con
@@ -48,9 +46,7 @@ CONFIG_FILE = user_data_path("nova_commands.json")
 SETTINGS_FILE = user_data_path("nova_settings.json")
 ICON_PATH = resource_path("nova.ico")
 
-# ──────────────────────────────────────────────
-#  REFINED DESIGN SYSTEM
-# ──────────────────────────────────────────────
+
 COLORS = {
     "bg":           "#0A0A0F",   # Deep space background
     "surface":      "#13131A",   # Primary surface
@@ -85,7 +81,6 @@ SPACING = {
 
 
 class NovaAssistant(ctk.CTk):
-    # ── Comprehensive wake-word triggers ──
     WAKE_TRIGGERS = [
         "nova", "noah", "nora", "novah", "nover", "novar",
         "know va", "now a", "no va", "now va", "nor va",
@@ -97,19 +92,19 @@ class NovaAssistant(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # ── Window Configuration ──
+
         self.title("N O V A")
         self.geometry("1000x680")
         self.minsize(880, 600)
         self.configure(fg_color=COLORS["bg"])
         ctk.set_appearance_mode("Dark")
 
-        # ── Set window icon ──
+
         if os.path.exists(ICON_PATH):
             self.iconbitmap(ICON_PATH)
             self.after(200, lambda: self.iconbitmap(ICON_PATH))
 
-        # ── State Variables ──
+
         self.is_running = False
         self.recognizer = sr.Recognizer()
         self.thread = None
@@ -119,7 +114,7 @@ class NovaAssistant(ctk.CTk):
         self._glow_after_id = None
         self._pulse_angle = 0
 
-        # ── Tune recognizer for better sensitivity ──
+
         self.recognizer.energy_threshold = 250
         self.recognizer.dynamic_energy_threshold = True
         self.recognizer.dynamic_energy_adjustment_damping = 0.15
@@ -127,11 +122,11 @@ class NovaAssistant(ctk.CTk):
         self.recognizer.pause_threshold = 0.5
         self.recognizer.non_speaking_duration = 0.4
 
-        # ── Initialize ──
+
         self.load_custom_commands()
         self.load_settings()
 
-        # ── Layout ──
+
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=0)
         self.grid_columnconfigure(0, weight=1)
@@ -143,17 +138,15 @@ class NovaAssistant(ctk.CTk):
         if self.stay_active:
             self.after(600, self.start_assistant)
 
-    # ═══════════════════════════════════════════
-    #  UI CONSTRUCTION
-    # ═══════════════════════════════════════════
+
     def _build_ui(self):
-        # ── Header Bar with Gradient ──
+
         header = ctk.CTkFrame(self, height=56, fg_color=COLORS["surface"], corner_radius=0)
         header.grid(row=0, column=0, sticky="ew")
         header.grid_columnconfigure(1, weight=1)
         header.grid_propagate(False)
 
-        # Logo section
+
         logo_frame = ctk.CTkFrame(header, fg_color="transparent")
         logo_frame.grid(row=0, column=0, padx=SPACING["lg"], pady=0)
 
@@ -169,7 +162,7 @@ class NovaAssistant(ctk.CTk):
             text_color=COLORS["text"]
         ).pack(side="left")
 
-        # Status indicator (top right)
+
         self.header_status = ctk.CTkLabel(
             header, text="● Standby",
             font=ctk.CTkFont(family=FONT, size=12),
@@ -177,7 +170,7 @@ class NovaAssistant(ctk.CTk):
         )
         self.header_status.grid(row=0, column=1, padx=SPACING["md"])
 
-        # Settings button
+
         self.menu_btn = ctk.CTkButton(
             header, text="⚙ Settings",
             font=ctk.CTkFont(family=FONT, size=12),
@@ -191,20 +184,20 @@ class NovaAssistant(ctk.CTk):
         )
         self.menu_btn.grid(row=0, column=2, padx=SPACING["lg"], pady=10)
 
-        # ── Main Content Area ──
+
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.grid(row=1, column=0, sticky="nsew", padx=SPACING["xxl"], pady=SPACING["xl"])
         content.grid_rowconfigure((0, 6), weight=1)
         content.grid_columnconfigure(0, weight=1)
 
-        # Title with spacing
+
         ctk.CTkLabel(
             content, text="N · O · V · A",
             font=ctk.CTkFont(family=FONT, size=56, weight="bold"),
             text_color=COLORS["text"]
         ).grid(row=1, column=0, pady=(0, SPACING["xs"]))
 
-        # Subtitle
+
         self.subtitle_label = ctk.CTkLabel(
             content, text="Neural Omni-capable Voice Assistant",
             font=ctk.CTkFont(family=FONT, size=14),
@@ -212,7 +205,7 @@ class NovaAssistant(ctk.CTk):
         )
         self.subtitle_label.grid(row=2, column=0, pady=(0, SPACING["sm"]))
 
-        # Version/Status badge
+
         self.status_badge = ctk.CTkLabel(
             content, text="Ready",
             font=ctk.CTkFont(family=FONT, size=11, weight="bold"),
@@ -224,7 +217,7 @@ class NovaAssistant(ctk.CTk):
         )
         self.status_badge.grid(row=3, column=0, pady=(0, SPACING["xxl"]))
 
-        # ── Animated Ring Container ──
+
         ring_size = 240
         self.ring_canvas = ctk.CTkCanvas(
             content, width=ring_size, height=ring_size,
@@ -232,15 +225,14 @@ class NovaAssistant(ctk.CTk):
         )
         self.ring_canvas.grid(row=4, column=0, pady=SPACING["md"])
 
-        # Draw static ring elements
         center = ring_size // 2
-        # Outer subtle ring
+
         self.ring_canvas.create_oval(
             center - 105, center - 105, center + 105, center + 105,
             outline=COLORS["border"], width=1, tags="static"
         )
 
-        # ── Main Control Button ──
+
         self.toggle_btn = ctk.CTkButton(
             content, text="ACTIVATE",
             font=ctk.CTkFont(family=FONT, size=16, weight="bold"),
@@ -253,7 +245,7 @@ class NovaAssistant(ctk.CTk):
         )
         self.toggle_btn.grid(row=4, column=0)
 
-        # ── Status Footer ──
+
         status_container = ctk.CTkFrame(
             content, fg_color=COLORS["surface"], corner_radius=14,
             border_width=1, border_color=COLORS["border"]
@@ -269,11 +261,7 @@ class NovaAssistant(ctk.CTk):
         )
         self.status_log.pack(pady=SPACING["md"], padx=SPACING["lg"])
 
-    # ═══════════════════════════════════════════
-    #  ENHANCED ANIMATIONS
-    # ═══════════════════════════════════════════
     def _start_pulse(self):
-        """Start smooth rotating pulse animation"""
         self._pulse_angle = 0
         self._pulse_tick()
 
@@ -286,10 +274,10 @@ class NovaAssistant(ctk.CTk):
         radius = 100
         self._pulse_angle = (self._pulse_angle + 2) % 360
 
-        # Create arc segments
+
         self.ring_canvas.delete("pulse")
 
-        # Main rotating arc
+
         start_angle = self._pulse_angle
         extent = 120
         self.ring_canvas.create_arc(
@@ -300,7 +288,7 @@ class NovaAssistant(ctk.CTk):
             style="arc", tags="pulse"
         )
 
-        # Secondary arc (opposite side, dimmer)
+
         start_angle2 = (self._pulse_angle + 180) % 360
         extent2 = 80
         self.ring_canvas.create_arc(
@@ -311,7 +299,7 @@ class NovaAssistant(ctk.CTk):
             style="arc", tags="pulse"
         )
 
-        # Glow effect (inner pulse)
+
         pulse_phase = (self._pulse_angle % 360) / 360.0
         inner_radius = 95 + 5 * math.sin(pulse_phase * 2 * math.pi)
         alpha = int(50 + 30 * math.sin(pulse_phase * 2 * math.pi))
@@ -325,7 +313,6 @@ class NovaAssistant(ctk.CTk):
         self.ring_canvas.delete("pulse")
 
     def _start_button_glow(self):
-        """Subtle breathing glow effect on button"""
         self._glow_phase = 0
         self._button_glow_tick()
 
@@ -336,7 +323,7 @@ class NovaAssistant(ctk.CTk):
         self._glow_phase = (self._glow_phase + 1) % 120
         intensity = 0.5 + 0.5 * math.sin((self._glow_phase / 120) * 2 * math.pi)
         
-        # Subtle color shift
+
         if intensity > 0.7:
             self.toggle_btn.configure(fg_color=COLORS["danger"])
         else:
@@ -349,9 +336,7 @@ class NovaAssistant(ctk.CTk):
             self.after_cancel(self._glow_after_id)
             self._glow_after_id = None
 
-    # ═══════════════════════════════════════════
-    #  SETTINGS PANEL
-    # ═══════════════════════════════════════════
+
     def open_menu(self):
         win = ctk.CTkToplevel(self)
         win.title("Settings")
@@ -366,7 +351,7 @@ class NovaAssistant(ctk.CTk):
         y = self.winfo_y() + (self.winfo_height() // 2) - 260
         win.geometry(f"+{x}+{y}")
 
-        # ── Header ──
+
         header = ctk.CTkFrame(win, fg_color=COLORS["surface"], corner_radius=0, height=64)
         header.pack(fill="x")
         header.pack_propagate(False)
@@ -380,11 +365,11 @@ class NovaAssistant(ctk.CTk):
             text_color=COLORS["text"]
         ).pack(side="left", pady=SPACING["lg"])
 
-        # Button container (right side)
+
         btn_container = ctk.CTkFrame(header_content, fg_color="transparent")
         btn_container.pack(side="right", pady=SPACING["md"])
 
-        # Commands Guide button
+
         ctk.CTkButton(
             btn_container, text="\U0001F4D6 Guide",
             font=ctk.CTkFont(family=FONT, size=13, weight="bold"),
@@ -397,7 +382,7 @@ class NovaAssistant(ctk.CTk):
             command=lambda: self._open_commands_guide(win)
         ).pack(side="left", padx=(0, SPACING["sm"]))
 
-        # Add button with icon
+
         ctk.CTkButton(
             btn_container, text="+ Add New",
             font=ctk.CTkFont(family=FONT, size=13, weight="bold"),
@@ -408,7 +393,7 @@ class NovaAssistant(ctk.CTk):
             command=lambda: self.open_add_edit_dialog(None, None, win)
         ).pack(side="left")
 
-        # ── Commands List ──
+
         list_frame = ctk.CTkFrame(win, fg_color="transparent")
         list_frame.pack(fill="both", expand=True, padx=SPACING["lg"], pady=SPACING["md"])
 
@@ -424,7 +409,7 @@ class NovaAssistant(ctk.CTk):
         self.funcs_scroll.pack(fill="both", expand=True)
         self.refresh_functions_list(self.funcs_scroll, win)
 
-        # ── Footer Settings ──
+
         footer = ctk.CTkFrame(win, fg_color=COLORS["surface2"], corner_radius=12, height=70)
         footer.pack(fill="x", padx=SPACING["lg"], pady=(SPACING["md"], SPACING["lg"]))
         footer.pack_propagate(False)
@@ -432,7 +417,7 @@ class NovaAssistant(ctk.CTk):
         footer_content = ctk.CTkFrame(footer, fg_color="transparent")
         footer_content.pack(fill="both", expand=True, padx=SPACING["lg"], pady=SPACING["md"])
 
-        # Left side - toggle
+
         left_frame = ctk.CTkFrame(footer_content, fg_color="transparent")
         left_frame.pack(side="left", fill="y")
 
@@ -464,7 +449,6 @@ class NovaAssistant(ctk.CTk):
         ).pack(anchor="w")
 
     def _open_commands_guide(self, parent_window):
-        """Open a beautiful Commands Guide dialog showing all available voice commands."""
         guide = ctk.CTkToplevel(self)
         guide.title("Commands Guide")
         guide.geometry("520x580")
@@ -498,7 +482,7 @@ class NovaAssistant(ctk.CTk):
             command=guide.destroy
         ).pack(side="right", padx=SPACING["lg"])
 
-        # Scrollable content
+
         content = ctk.CTkScrollableFrame(
             guide, fg_color="transparent",
             scrollbar_button_color=COLORS["border"],
@@ -506,7 +490,7 @@ class NovaAssistant(ctk.CTk):
         )
         content.pack(fill="both", expand=True, padx=SPACING["lg"], pady=SPACING["md"])
 
-        # Command categories with their commands
+
         categories = [
             {
                 "title": "\U0001F3A4  Wake Word",
@@ -555,14 +539,14 @@ class NovaAssistant(ctk.CTk):
         ]
 
         for cat in categories:
-            # Category card
+
             card = ctk.CTkFrame(
                 content, fg_color=COLORS["surface"],
                 corner_radius=12, border_width=1, border_color=COLORS["border"]
             )
             card.pack(fill="x", pady=SPACING["xs"], padx=SPACING["xs"])
 
-            # Category header
+
             cat_header = ctk.CTkFrame(card, fg_color="transparent")
             cat_header.pack(fill="x", padx=SPACING["md"], pady=(SPACING["md"], SPACING["xs"]))
 
@@ -572,7 +556,7 @@ class NovaAssistant(ctk.CTk):
                 text_color=cat["color"]
             ).pack(anchor="w")
 
-            # Commands
+
             for trigger, desc in cat["commands"]:
                 cmd_frame = ctk.CTkFrame(card, fg_color="transparent")
                 cmd_frame.pack(fill="x", padx=SPACING["lg"], pady=2)
@@ -589,10 +573,10 @@ class NovaAssistant(ctk.CTk):
                     text_color=COLORS["text_dim"], anchor="w", wraplength=440
                 ).pack(anchor="w", padx=(SPACING["sm"], 0))
 
-            # Bottom padding for card
+
             ctk.CTkFrame(card, fg_color="transparent", height=SPACING["sm"]).pack()
 
-        # Footer tip
+
         tip_frame = ctk.CTkFrame(
             guide, fg_color=COLORS["surface2"], corner_radius=12, height=50
         )
@@ -606,7 +590,6 @@ class NovaAssistant(ctk.CTk):
         ).pack(expand=True)
 
     def refresh_functions_list(self, scroll_frame, parent_window):
-        """Enhanced command list with better cards"""
         for w in scroll_frame.winfo_children():
             w.destroy()
 
@@ -644,11 +627,11 @@ class NovaAssistant(ctk.CTk):
             )
             card.pack(fill="x", pady=SPACING["xs"], padx=SPACING["sm"])
 
-            # Content wrapper
+
             content = ctk.CTkFrame(card, fg_color="transparent")
             content.pack(fill="x", padx=SPACING["md"], pady=SPACING["md"])
 
-            # Left - Info
+
             info_frame = ctk.CTkFrame(content, fg_color="transparent")
             info_frame.pack(side="left", fill="x", expand=True)
 
@@ -665,11 +648,11 @@ class NovaAssistant(ctk.CTk):
                 text_color=COLORS["text_dim"], anchor="w"
             ).pack(anchor="w", pady=(2, 0))
 
-            # Right - Actions
+
             actions = ctk.CTkFrame(content, fg_color="transparent")
             actions.pack(side="right")
 
-            # Edit button
+
             ctk.CTkButton(
                 actions, text="✎",
                 width=36, height=36, corner_radius=8,
@@ -682,7 +665,7 @@ class NovaAssistant(ctk.CTk):
                 command=lambda n=name, l=link: self.open_add_edit_dialog(n, l, parent_window)
             ).pack(side="left", padx=2)
 
-            # Delete button
+
             ctk.CTkButton(
                 actions, text="×",
                 width=36, height=36, corner_radius=8,
@@ -696,7 +679,6 @@ class NovaAssistant(ctk.CTk):
             ).pack(side="left", padx=2)
 
     def open_add_edit_dialog(self, edit_name, edit_link, parent_window):
-        """Modern add/edit dialog"""
         dlg = ctk.CTkToplevel(self)
         dlg.title("Edit Function" if edit_name else "New Function")
         dlg.geometry("480x340")
@@ -710,7 +692,7 @@ class NovaAssistant(ctk.CTk):
         y = parent_window.winfo_y() + (parent_window.winfo_height() // 2) - 170
         dlg.geometry(f"+{x}+{y}")
 
-        # Main card
+
         card = ctk.CTkFrame(
             dlg, fg_color=COLORS["surface"],
             corner_radius=16, border_width=1, border_color=COLORS["border"]
@@ -726,11 +708,11 @@ class NovaAssistant(ctk.CTk):
         )
         header.pack(pady=(SPACING["lg"], SPACING["xl"]), padx=SPACING["lg"])
 
-        # Form
+
         form = ctk.CTkFrame(card, fg_color="transparent")
         form.pack(fill="both", expand=True, padx=SPACING["xl"], pady=(0, SPACING["lg"]))
 
-        # Name field
+
         ctk.CTkLabel(
             form, text="Voice Trigger",
             font=ctk.CTkFont(family=FONT, size=12, weight="bold"),
@@ -750,7 +732,7 @@ class NovaAssistant(ctk.CTk):
         if edit_name:
             name_entry.insert(0, edit_name)
 
-        # Link field
+
         ctk.CTkLabel(
             form, text="Target (URL or Path)",
             font=ctk.CTkFont(family=FONT, size=12, weight="bold"),
@@ -783,7 +765,7 @@ class NovaAssistant(ctk.CTk):
             if hasattr(self, "funcs_scroll") and self.funcs_scroll.winfo_exists():
                 self.refresh_functions_list(self.funcs_scroll, parent_window)
 
-        # Save button
+
         ctk.CTkButton(
             form, text="Save Function",
             font=ctk.CTkFont(family=FONT, size=14, weight="bold"),
@@ -799,12 +781,10 @@ class NovaAssistant(ctk.CTk):
         self.save_custom_commands()
         self.refresh_functions_list(scroll_frame, parent_window)
 
-    # ═══════════════════════════════════════════
-    #  DATA PERSISTENCE
-    # ═══════════════════════════════════════════
+
     def load_custom_commands(self):
         if not os.path.exists(CONFIG_FILE):
-            # Try migrating from old locations
+
             old_locations = [
                 os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "nova_commands.json"),
                 "nova_commands.json",
@@ -865,9 +845,7 @@ class NovaAssistant(ctk.CTk):
         except:
             pass
 
-    # ═══════════════════════════════════════════
-    #  DYNAMIC DRIVE FOLDER ACCESS
-    # ═══════════════════════════════════════════
+
     def _find_folder_on_drive(self, folder_name, drive_letter):
         """Find a folder on any drive by name using fuzzy matching.
         Works with any drive letter (M, C, E, D, etc.)."""
@@ -875,7 +853,7 @@ class NovaAssistant(ctk.CTk):
         if not os.path.exists(drive_root):
             return None
         try:
-            # Gather all top-level folders on this drive
+
             folders = {}
             for entry in os.scandir(drive_root):
                 if entry.is_dir():
@@ -883,16 +861,16 @@ class NovaAssistant(ctk.CTk):
 
             name = folder_name.lower().strip()
 
-            # Exact match
+
             if name in folders:
                 return folders[name]
 
-            # Fuzzy match
+
             matches = difflib.get_close_matches(name, folders.keys(), n=1, cutoff=0.5)
             if matches:
                 return folders[matches[0]]
 
-            # Substring match
+
             for fname, fpath in folders.items():
                 if name in fname or fname in name:
                     return fpath
@@ -903,16 +881,14 @@ class NovaAssistant(ctk.CTk):
     def _parse_drive_command(self, command):
         """Parse commands like 'open internship from m drive' or 'open photos from e drive'.
         Returns (folder_name, drive_letter) or (None, None)."""
-        # Pattern: "open <folder> from <letter> drive"
+
         pattern = r'^open\s+(.+?)\s+from\s+([a-z])\s*drive$'
         match = re.match(pattern, command.lower().strip())
         if match:
             return match.group(1).strip(), match.group(2).strip()
         return None, None
 
-    # ═══════════════════════════════════════════
-    #  WINDOW SWITCHING (focus existing windows)
-    # ═══════════════════════════════════════════
+
     def _get_window_keywords(self, app_name):
         """Return a list of window-title keywords to search for a given app."""
         app_lower = app_name.lower()
@@ -972,10 +948,10 @@ class NovaAssistant(ctk.CTk):
 
         if found_hwnd:
             try:
-                # Restore if minimized
+
                 if win32gui.IsIconic(found_hwnd):
                     win32gui.ShowWindow(found_hwnd, win32con.SW_RESTORE)
-                # Bring to foreground
+
                 win32gui.SetForegroundWindow(found_hwnd)
                 return True
             except Exception:
@@ -1003,9 +979,7 @@ class NovaAssistant(ctk.CTk):
         self.stay_active = self.stay_active_var.get()
         self.save_settings()
 
-    # ═══════════════════════════════════════════
-    #  VOICE ASSISTANT CONTROL
-    # ═══════════════════════════════════════════
+
     def toggle_assistant(self):
         if not self.is_running:
             self.start_assistant()
@@ -1015,7 +989,7 @@ class NovaAssistant(ctk.CTk):
     def start_assistant(self):
         self.is_running = True
 
-        # Update UI to active state
+
         self.toggle_btn.configure(
             text="LISTENING",
             fg_color=COLORS["danger"],
@@ -1035,24 +1009,24 @@ class NovaAssistant(ctk.CTk):
             text_color=COLORS["success_glow"]
         )
 
-        # Start animations
+
         self._start_pulse()
         self._start_button_glow()
 
         self.speak("Nova online.")
 
-        # Start listening thread
+
         self.thread = threading.Thread(target=self.run_loop, daemon=True)
         self.thread.start()
 
     def stop_assistant(self):
         self.is_running = False
 
-        # Stop animations
+
         self._stop_pulse()
         self._stop_button_glow()
 
-        # Update UI to standby state
+
         self.toggle_btn.configure(
             text="ACTIVATE",
             fg_color=COLORS["accent"],
@@ -1084,7 +1058,6 @@ class NovaAssistant(ctk.CTk):
         return engine
 
     def speak(self, text):
-        """Blocking speech — waits until TTS finishes."""
         self.status_log.configure(text=f"Nova: {text}")
         try:
             if pythoncom:
@@ -1098,13 +1071,10 @@ class NovaAssistant(ctk.CTk):
             pass
 
     def speak_async(self, text):
-        """Non-blocking speech — speaks in a background thread so
-        the main listening loop can continue immediately."""
         self.status_log.configure(text=f"Nova: {text}")
         threading.Thread(target=self._speak_worker, args=(text,), daemon=True).start()
 
     def _speak_worker(self, text):
-        """Background TTS worker thread."""
         try:
             if pythoncom:
                 pythoncom.CoInitialize()
@@ -1116,14 +1086,12 @@ class NovaAssistant(ctk.CTk):
         except:
             pass
 
-    # ═══════════════════════════════════════════
-    #  COMMAND PROCESSING
-    # ═══════════════════════════════════════════
+
     def close_application(self, app_name):
-        """Close an application by name using taskkill with comprehensive process mapping."""
+
         self.speak(f"Closing {app_name}")
 
-        # Comprehensive mapping of app names to their process names
+
         process_map = {
             "chrome":       ["chrome.exe"],
             "google chrome": ["chrome.exe"],
@@ -1156,7 +1124,7 @@ class NovaAssistant(ctk.CTk):
         app_lower = app_name.lower().strip()
         killed = False
 
-        # Try the process map first
+
         for key, proc_names in process_map.items():
             if key in app_lower or app_lower in key:
                 for proc in proc_names:
@@ -1171,9 +1139,7 @@ class NovaAssistant(ctk.CTk):
                 if killed:
                     return
 
-        # Fallback: try PowerShell to find process by partial name match
         try:
-            # Clean the name for process search
             search_name = re.sub(r'[^a-zA-Z0-9]', '', app_lower)
             ps_cmd = f'Get-Process | Where-Object {{$_.ProcessName -like "*{search_name}*"}} | Stop-Process -Force'
             subprocess.run(
@@ -1183,7 +1149,7 @@ class NovaAssistant(ctk.CTk):
         except:
             pass
 
-        # Last resort: try direct taskkill with the name as-is
+
         try:
             proc = app_lower
             if not proc.endswith(".exe"):
@@ -1198,12 +1164,12 @@ class NovaAssistant(ctk.CTk):
     def process_command(self, command):
         command = command.lower()
 
-        # Close application
+
         if command.startswith("close "):
             self.close_application(command.replace("close ", "").strip())
             return
 
-        # Custom commands
+
         for key, link in self.custom_commands.items():
             if f"open {key}" in command or key in command:
                 self.speak(f"Opening {key}")
@@ -1216,12 +1182,7 @@ class NovaAssistant(ctk.CTk):
                         subprocess.Popen(["explorer", link], shell=True)
                 return
 
-        # --------------------------------------------------
-        # Drive folder commands (HIGHEST PRIORITY for "from X drive")
-        # e.g. "open internship from m drive"
-        # e.g. "open photos from e drive"
-        # Works with ANY drive letter — not hardcoded!
-        # --------------------------------------------------
+
         folder_name, drive_letter = self._parse_drive_command(command)
         if folder_name and drive_letter:
             folder_path = self._find_folder_on_drive(folder_name, drive_letter)
@@ -1233,7 +1194,7 @@ class NovaAssistant(ctk.CTk):
                 self.speak(f"Could not find {folder_name} on {drive_letter.upper()} drive")
             return
 
-        # Special: "open [letter] drive" → open drive root
+
         drive_root_match = re.match(r'^open\s+([a-z])\s*drive$', command.strip())
         if drive_root_match:
             dl = drive_root_match.group(1).upper()
@@ -1245,16 +1206,16 @@ class NovaAssistant(ctk.CTk):
                 self.speak(f"{dl} drive not found")
             return
 
-        # ── Open commands (apps / window switching) ──
+
         if command.startswith("open "):
             target = command.replace("open ", "").strip()
 
-            # Try to switch to an already-open window first
+
             if self._switch_to_window(target):
                 self.speak(f"Switching to {target}")
                 return
 
-            # System applications — launch new if not already open
+
             launch_path = self.apps.get(target)
             if not launch_path:
                 matches = sorted([k for k in self.apps if target in k], key=len)
@@ -1272,32 +1233,29 @@ class NovaAssistant(ctk.CTk):
                     pass
                 return
 
-        # Command prompt
+
         if "command prompt" in command or "terminal" in command:
-            # Try switching to existing terminal first
+
             if self._switch_to_window("terminal"):
                 self.speak("Switching to Terminal")
             else:
                 self.speak("Opening Terminal")
                 os.system("start cmd")
 
-    # ═══════════════════════════════════════════
-    #  LISTENING LOOP
-    # ═══════════════════════════════════════════
+
     def _is_wake_word(self, heard_text):
-        """Check if heard text contains the wake word 'Nova' using both
-        direct matching and fuzzy matching for mispronunciations."""
+
         heard = heard_text.lower().strip()
 
-        # 1. Direct substring matching against all triggers
+
         for trigger in self.WAKE_TRIGGERS:
             if trigger in heard:
                 return True
 
-        # 2. Fuzzy match each spoken word against 'nova'
+
         words = heard.split()
         for w in words:
-            # Strip punctuation
+
             w_clean = re.sub(r'[^a-z]', '', w)
             if not w_clean:
                 continue
@@ -1312,15 +1270,15 @@ class NovaAssistant(ctk.CTk):
             pythoncom.CoInitialize()
 
         try:
-            # Open microphone ONCE and keep it open for the entire session
+
             with sr.Microphone() as source:
-                # Calibrate ambient noise ONCE at the start
+
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.8)
                 print(f"[Nova] Calibrated. Energy threshold: {self.recognizer.energy_threshold}")
 
                 while self.is_running:
                     try:
-                        # Listen for wake word — short phrase, generous timeout
+
                         try:
                             audio = self.recognizer.listen(
                                 source, timeout=3, phrase_time_limit=3
@@ -1337,9 +1295,9 @@ class NovaAssistant(ctk.CTk):
                         except (sr.UnknownValueError, sr.RequestError):
                             continue
 
-                        # Wake word detection (direct + fuzzy matching)
+
                         if self._is_wake_word(word):
-                            # Say "Yes boss!" WITHOUT blocking — start listening immediately
+
                             self.speak_async("Yes boss!")
                             self.subtitle_label.configure(
                                 text="Processing command...",
@@ -1350,8 +1308,7 @@ class NovaAssistant(ctk.CTk):
                                 text_color=COLORS["warn"]
                             )
 
-                            # Listen for the actual command on the SAME mic
-                            # This starts IMMEDIATELY while "Yes boss!" is still playing
+
                             try:
                                 a2 = self.recognizer.listen(
                                     source, timeout=5, phrase_time_limit=8
@@ -1364,7 +1321,7 @@ class NovaAssistant(ctk.CTk):
                             except sr.UnknownValueError:
                                 self.speak("Could not understand.")
 
-                            # Reset to listening state
+
                             self.subtitle_label.configure(
                                 text='Listening for "Nova" command',
                                 text_color=COLORS["success_glow"]

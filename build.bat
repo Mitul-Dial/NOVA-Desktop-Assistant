@@ -16,7 +16,19 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo  [1/4] Installing dependencies...
+REM ── Create virtual environment if not exists ──
+if not exist ".venv\Scripts\activate.bat" (
+    echo  [1/5] Creating virtual environment...
+    python -m venv .venv
+) else (
+    echo  [1/5] Virtual environment found.
+)
+
+REM ── Activate venv ──
+call .venv\Scripts\activate.bat
+echo.
+
+echo  [2/5] Installing dependencies...
 pip install -r requirements.txt
 if errorlevel 1 (
     echo  [ERROR] Failed to install dependencies.
@@ -25,11 +37,11 @@ if errorlevel 1 (
 )
 echo.
 
-echo  [2/4] Generating app icon...
+echo  [3/5] Generating app icon...
 python generate_icon.py
 echo.
 
-echo  [3/4] Building NOVA.exe (this may take a minute)...
+echo  [4/5] Building NOVA.exe (this may take a minute)...
 pyinstaller --noconfirm ^
     --onefile ^
     --windowed ^
@@ -55,7 +67,7 @@ if errorlevel 1 (
 )
 echo.
 
-echo  [4/4] Creating Desktop shortcut...
+echo  [5/5] Creating Desktop shortcut...
 powershell -Command ^
     "$ws = New-Object -ComObject WScript.Shell; " ^
     "$sc = $ws.CreateShortcut([System.IO.Path]::Combine($env:USERPROFILE, 'Desktop', 'NOVA.lnk')); " ^
