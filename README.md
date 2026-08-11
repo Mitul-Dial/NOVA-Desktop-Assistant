@@ -1,231 +1,154 @@
+# NOVA Desktop Assistant
 
+## Overview
 
-<h1 align="center">NOVA</h1>
-<p align="center"><strong>Desktop Voice Assistant</strong></p>
+NOVA is a hands-free, voice-controlled desktop assistant for Windows built entirely in Python. It runs as a standalone application featuring a premium dark-themed interface. Once activated, NOVA continuously listens for voice input and executes system operations, allowing users to open applications, navigate directories, close programs, and trigger custom workflows without keyboard or mouse interaction.
 
-<p align="center">
-A hands-free voice-controlled desktop assistant for Windows that lets you open apps, navigate folders, close programs, and execute custom commands — all using your voice.
-</p>
+## Features
 
----
+- **Wake Word Detection**: Activate the assistant naturally using the primary wake word "Nova" or recognized phonetic variations.
+- **Application Management**: Launch or terminate installed applications system-wide (e.g., Chrome, Spotify, VS Code).
+- **Directory Navigation**: Browse drives and folders directly via voice commands.
+- **Smart Window Switching**: Detects if an application is already running and brings it to the foreground to prevent duplicate instances.
+- **Terminal Access**: Quickly launch the Command Prompt or Terminal via voice.
+- **Custom Commands**: Define custom voice triggers mapped to specific URLs, file paths, or executables through the built-in settings interface.
+- **Auto-Start Mode**: Configure the application to begin listening immediately upon launch.
+- **Premium User Interface**: Features a futuristic, dark-themed GUI built with CustomTkinter, incorporating smooth pulse animations and responsive feedback.
+- **Standalone Executable**: Packaged as a single portable executable file requiring no complex installation.
 
-## 🤔 What is NOVA?
+## How It Works
 
-NOVA is a **desktop voice assistant** built entirely in Python. It runs as a standalone Windows application with a premium dark-themed interface. Once activated, NOVA continuously listens for your voice and performs actions on your computer — no typing, no clicking.
+The application operates on a continuous, multi-threaded listening loop once activated:
 
-Think of it like having your own personal Jarvis — say *"Nova"* to wake it up, then tell it what to do.
+1. **User Input**: The user speaks the wake word followed by a command.
+2. **Speech Processing**: Audio is captured via the microphone and processed using Google Speech-to-Text.
+3. **Intent Handling**: The recognized text is parsed to extract the core intent (e.g., "open", "close") and the target (e.g., "Chrome", "M drive").
+4. **Action Execution**: The system executes the requested operation using Windows API integrations (pywin32) or standard OS commands.
+5. **Response**: NOVA provides auditory feedback confirming the action using offline text-to-speech (pyttsx3) and updates the GUI status.
 
----
+## Tech Stack
 
-## ✨ Features
+| Technology | Purpose |
+|------------|---------|
+| **Python 3.10+** | Core application logic and multi-threading |
+| **CustomTkinter** | Modern, dark-themed graphical user interface |
+| **SpeechRecognition** | Audio capture and cloud-based speech-to-text processing |
+| **PyTTSX3** | Offline text-to-speech engine for vocal feedback |
+| **PyWin32** | Deep Windows OS integration for window management |
+| **PyInstaller** | Bundling the application into a standalone executable |
 
-| Feature | Description |
-|---------|-------------|
-| 🎤 **Wake Word Detection** | Say *"Nova"* to activate. Understands natural variations like *"Noah"*, *"Nora"*, etc. |
-| 🚀 **Open Any Application** | *"Open Chrome"*, *"Open Spotify"*, *"Open VS Code"* — works with any installed app on your PC |
-| 📂 **Folder & Drive Navigation** | *"Open M drive"* or *"Open Internship from M drive"* — browse any drive and folder by voice |
-| ❌ **Close Applications** | *"Close Chrome"*, *"Close Discord"* — shut down apps hands-free |
-| 💻 **Terminal Access** | *"Open Terminal"* or *"Open Command Prompt"* |
-| 🔄 **Smart Window Switching** | If the app is already running, NOVA switches to it instead of opening a duplicate |
-| ⚙️ **Custom Commands** | Add your own voice triggers for URLs, file paths, or programs through the settings panel |
-| 🔁 **Auto-Start Mode** | Toggle auto-activation so NOVA starts listening the moment you launch it |
-| 🎨 **Premium Dark UI** | Futuristic glassmorphism-inspired design with smooth pulse animations |
-| 🖥️ **Single EXE** | Builds into one portable `.exe` file — no installation needed |
+## Project Structure
 
----
+```text
+NOVA-Desktop-Assistant/
+├── assets/                     # Project screenshots
+├── build.bat                   # Automated build script
+├── generate_icon.py            # Icon generation utility
+├── LICENSE                     # MIT License agreement
+├── nova.ico                    # Compiled application icon
+├── NOVA Desktop Assistant.py   # Main application source code
+├── nova_commands.json          # Base configuration for commands
+├── README.md                   # Project documentation
+└── requirements.txt            # Python dependencies
+```
 
-## 💡 Why Use NOVA?
-
-- **Hands-free productivity** — Control your PC without touching the keyboard or mouse
-- **Instant app launching** — Opens any app in seconds, faster than searching through the Start Menu
-- **Works offline for UI** — The interface and app management run locally; only speech recognition needs internet
-- **Lightweight** — Minimal CPU and memory usage when idle, runs quietly in the background
-- **Fully customizable** — Add unlimited custom voice commands through the built-in settings panel
-- **No account needed** — No sign-ups, no cloud services, no data collection — it runs 100% on your machine
-- **Open source** — Read, modify, and improve the code however you like
-
----
-
-## 🚀 Getting Started
+## Installation
 
 ### Prerequisites
 
-Before you start, make sure you have:
+- Python 3.10 or newer
+- An active microphone (built-in or external)
+- An active internet connection (required for speech recognition)
 
-1. **Python 3.10 or newer**
-2. **A working microphone** — Built-in laptop mic, headset, or external mic
-4. **Internet connection** — Required for voice recognition (uses Google Speech-to-Text)
+### Option 1: Automated Build (Recommended)
 
----
+1. Download or clone this repository:
+   ```bash
+   git clone https://github.com/Mitul-Dial/NOVA-Desktop-Assistant.git
+   ```
+2. Navigate to the project directory and execute `build.bat`.
+   - This script automatically creates a virtual environment, installs all required dependencies, compiles the application into a single `.exe` file, and places a shortcut on your Desktop.
+3. Launch the application using the created shortcut.
 
-## 📦 Installation & Build
+### Option 2: Run from Source
 
-### Option 1: One-Click Build (Recommended)
+1. Clone the repository and navigate to the folder:
+   ```bash
+   git clone https://github.com/Mitul-Dial/NOVA-Desktop-Assistant.git
+   cd NOVA-Desktop-Assistant
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+3. Install the dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Generate the required application icon (first run only):
+   ```bash
+   python generate_icon.py
+   ```
+5. Execute the main script:
+   ```bash
+   python "NOVA Desktop Assistant.py"
+   ```
 
-The easiest way — just double-click one file and you're done:
+## Configuration
 
-1. **Download this repository:**
-   - Click the green **"Code"** button on GitHub → **"Download ZIP"**
-   - Extract the ZIP to any folder
-   - Or clone with Git:
-     ```bash
-     git clone https://github.com/Mitul-Dial/NOVA-Desktop-Assistant.git
-     ```
+NOVA automatically manages its configuration and user settings locally. No complex environment variables or secrets are required to run the application.
 
-2. **Open the folder** and **double-click `build.bat`**
-   - It automatically creates a virtual environment
-   - Installs all dependencies (nothing pollutes your global Python)
-   - Builds the `NOVA.exe`
-   - Places a shortcut on your Desktop
+User data, including custom commands and UI preferences, is stored securely in:
+`%APPDATA%\NOVA\`
 
-3. **Double-click "NOVA" on your Desktop** — the app opens! 🎉
+This ensures that configurations persist across updates or rebuilds of the executable.
 
-### Option 2: Run Directly with Python
+## Usage
 
-If you just want to run it without building an EXE:
+1. Launch the NOVA application.
+2. Click the central **ACTIVATE** button (or enable Auto-Start in the settings).
+3. Say the wake word: **"Nova"**.
+4. Issue a command. Examples include:
+   - *"Open Chrome"*
+   - *"Close Spotify"*
+   - *"Open M drive"*
+   - *"Open photos from D drive"*
+   - *"Open Terminal"*
+5. To configure custom commands, click the **Settings** icon, select **Add New**, and map a custom voice trigger to a URL or file path.
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/Mitul-Dial/NOVA-Desktop-Assistant.git
-cd NOVA-Desktop-Assistant
+## Screenshots
 
-# 2. Create a virtual environment
-python -m venv .venv
+### Main Interface
+![NOVA Main Interface](assets/Main%20desktop.jfif)
 
-# 3. Activate it
-.venv\Scripts\activate
+### Active Listening Mode
+![NOVA Active Listening Mode](assets/AI%20Turned%20On.jfif)
 
-# 4. Install dependencies
-pip install -r requirements.txt
+### Command Library
+![NOVA Command Library](assets/Command%20Library.jfif)
 
-# 5. Generate the icon (first time only)
-python generate_icon.py
+### Custom Function Setup
+![NOVA Custom Function Setup](assets/Save%20New%20Function.jfif)
 
-# 6. Run NOVA
-python "NOVA Desktop Assistant.py"
-```
+## Technical Highlights
 
----
+- **Multi-threaded Architecture**: The UI runs on the main thread while speech recognition and system operations are handled asynchronously, ensuring a responsive interface at all times.
+- **Fuzzy Matching Logic**: Employs string similarity algorithms to match voice inputs with installed applications, increasing reliability even with minor misinterpretations.
+- **Native OS Integration**: Utilizes COM interfaces and the Windows API to intelligently detect running applications and switch window focus rather than opening redundant instances.
+- **Dynamic GUI Elements**: Features mathematically calculated rendering for continuous pulse and glow animations in the CustomTkinter canvas without relying on external image assets for state changes.
 
-## 🗣️ How to Use
+## Future Improvements
 
-### Step 1: Launch NOVA
-Double-click the **NOVA** shortcut on your Desktop (or run the Python script). The app opens with a sleek dark interface.
-
-### Step 2: Activate the Assistant
-You have two ways:
-- **Click the "ACTIVATE" button** in the center of the screen
-- **Enable Auto-Start** in Settings so it activates automatically every time
-
-### Step 3: Say the Wake Word
-Once activated, NOVA continuously listens in the background. Say:
-> **"Nova"**
-
-NOVA will respond with *"Yes boss!"* and start listening for your command.
-
-### Step 4: Give a Command
-After the wake word, say your command clearly:
-
-| What You Say | What Happens |
-|-------------|-------------|
-| *"Open Chrome"* | Opens Google Chrome (or switches to it if already open) |
-| *"Open Spotify"* | Opens Spotify |
-| *"Open VS Code"* | Opens Visual Studio Code |
-| *"Open [any app]"* | Opens any installed application |
-| *"Open M drive"* | Opens M:\ in File Explorer |
-| *"Open photos from D drive"* | Opens the "photos" folder on D:\ |
-| *"Open [folder] from [X] drive"* | Opens any folder from any drive |
-| *"Close Chrome"* | Closes Google Chrome |
-| *"Close [any app]"* | Closes the specified application |
-| *"Open Terminal"* | Opens Command Prompt |
-
-### Step 5: Add Custom Commands (Optional)
-1. Click **⚙ Settings** in the top-right corner
-2. Click **+ Add New**
-3. Enter a **Voice Trigger** (e.g., *"google"*) and a **Target URL or path**
-4. Now say *"Nova... open google"* and it opens!
-
-### Step 6: Deactivate
-Click the red **DEACTIVATE** button to stop listening. Close the window to exit completely.
-
----
-
-## 📁 Project Structure
-
-```
-NOVA-Desktop-Assistant/
-├── NOVA Desktop Assistant.py   # Main application source code
-├── generate_icon.py            # Script to generate the app icon
-├── nova.ico                    # App icon (auto-generated)
-├── build.bat                   # One-click build script
-├── requirements.txt            # Python dependencies
-├── LICENSE                     # MIT License
-└── README.md                   # This file
-```
-
----
-
-## 🛠️ Manual EXE Build
-
-If you want to build the EXE manually without `build.bat`:
-
-```bash
-# Activate your virtual environment first
-.venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Generate icon
-python generate_icon.py
-
-# Build EXE
-pyinstaller --onefile --windowed --name "NOVA" --icon "nova.ico" ^
-    --add-data "nova.ico;." ^
-    --hidden-import "pyttsx3.drivers" ^
-    --hidden-import "pyttsx3.drivers.sapi5" ^
-    --hidden-import "win32com.client" ^
-    --hidden-import "pythoncom" ^
-    --hidden-import "comtypes" ^
-    --hidden-import "customtkinter" ^
-    --hidden-import "speech_recognition" ^
-    "NOVA Desktop Assistant.py"
-```
-
-The EXE will be at `dist/NOVA.exe`.
-
----
-
-## 📝 Notes
-
-- Your **custom commands and settings** are saved in `%APPDATA%\NOVA\` — they persist even if you update or rebuild the app
-- NOVA requires an **internet connection** for speech recognition (it uses Google's free Speech-to-Text API)
-- The built EXE is a **single portable file** — you can copy it to any Windows PC and run it directly
-- First launch may take a few seconds as Windows verifies the executable
-
----
-
-## ⚠️ Disclaimer
-
-This software is provided **"as-is"** without any warranty of any kind, express or implied. By downloading, installing, or using NOVA, you acknowledge and agree that:
-
-- **You use this software entirely at your own risk.** The developer is **not responsible** for any damage, data loss, system issues, or any other consequences that may arise from using this program.
-- This is an **open-source hobby project** and is not guaranteed to be free of bugs or errors.
-- NOVA interacts with your operating system (opening/closing apps, accessing folders). While it only performs actions you explicitly command, the developer takes **no liability** for any unintended behavior.
-- Voice recognition accuracy depends on your microphone quality, internet connection, and environment — it may occasionally misinterpret commands.
-
-**Use responsibly.** If you are unsure, review the source code before running.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
-
----
+- Implementation of an offline wake-word engine (such as Porcupine) to reduce latency and reliance on cloud services for initial activation.
+- Cross-platform support for macOS and Linux environments.
+- Integration with large language models (LLMs) for complex query resolution and conversational capabilities.
+- Advanced window management (e.g., resizing, snapping) via voice commands.
 
 ## Author
 
-**Developed by Mitul Dial**  
-GitHub: [https://github.com/Mitul-Dial](https://github.com/Mitul-Dial)
+Mitul Dial
 
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
